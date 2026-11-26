@@ -62,15 +62,25 @@ previous=$(kubectl -n "$NS" get secret demo-credentials -o jsonpath='{.data.pass
 
 log "Checking self-healing after external deletion"
 kubectl -n "$NS" delete secret demo-credentials
-wait_for "secret recreated" 30 kubectl -n "$NS" get secret demo-credentials
+# The version must keep increasing (not restart at 1), otherwise the
+# workload's restart marker already matches and the rollout is skipped.
+wait_for "secret recreated as version 3" 30 bash -c "[[ \$(kubectl -n $NS get secret demo-credentials -o jsonpath='{.metadata.annotations.rotation\.nolankisser\.github\.io/version}') == 3 ]]"
+wait_for "workload rolled for version 3" 30 bash -c \
+  "kubectl -n $NS get deploy demo-app -o jsonpath='{.spec.template.metadata.annotations}' | grep 'demo/v3' >/dev/null"
 
 log "Checking garbage collection on delete"
 kubectl -n "$NS" delete secretrotation demo --wait=true --timeout=60s
 wait_for "secret garbage collected" 60 bash -c "! kubectl -n $NS get secret demo-credentials"
 
 log "Checking rotation was logged"
-# Two replicas: read every pod, since only the leader reconciles.
-kubectl -n "$OPERATOR_NS" logs -l control-plane=controller-manager --tail=-1 | grep -q '"rotated secret"' \
-  || fail "no rotation log lines"
+# Two replicas: read every pod, since only the leader reconciles. Capture
+# first instead of piping into `grep -q`: with pipefail, grep exiting early
+# SIGPIPEs kubectl and fails the pipeline even when the line matched.
+operator_logs=$(kubectl -n "$OPERATOR_NS" logs -l control-plane=controller-manager --tail=-1)
+grep -q '"rotated secret"' <<<"$operator_logs" || fail "no rotation log lines"
+if grep -q 'forbidden' <<<"$operator_logs"; then
+  grep 'forbidden' <<<"$operator_logs" | head -5
+  fail "operator hit RBAC denials"
+fi
 
 printf '\n\033[1;32mE2E PASSED\033[0m\n'

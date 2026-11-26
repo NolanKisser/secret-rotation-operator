@@ -7,7 +7,9 @@ rules:
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: ["events.k8s.io"]
+# client-go's leader election still records "became leader" Events through
+# the core (v1) Events API, not events.k8s.io.
+- apiGroups: ["", "events.k8s.io"]
   resources: ["events"]
   verbs: ["create", "patch"]
 ---

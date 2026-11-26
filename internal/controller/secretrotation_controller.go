@@ -176,7 +176,11 @@ func (r *SecretRotationReconciler) rotate(ctx context.Context, sr *rotationv1alp
 	secret.Data = data
 
 	prev := readState(existing)
-	st := secretState{Version: prev.Version + 1, RotatedAt: now, Trigger: prev.Trigger}
+	// The Secret is the source of truth, but if it was deleted (or replaced)
+	// its counter is gone. Never let the version go backwards: restart
+	// markers on workloads compare by version, so reusing "v1" for new
+	// credentials would silently skip the rollout.
+	st := secretState{Version: max(prev.Version, sr.Status.CurrentVersion) + 1, RotatedAt: now, Trigger: prev.Trigger}
 	if reason.fullRotation() {
 		st.Trigger = sr.Annotations[rotationv1alpha1.AnnotationRotateNow]
 	} else {

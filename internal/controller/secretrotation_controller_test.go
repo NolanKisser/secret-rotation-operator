@@ -257,6 +257,31 @@ func TestRepairsDeletedSecret(t *testing.T) {
 	h.secret("db-creds") // fails the test if absent
 }
 
+// Regression: recreating a deleted Secret used to restart the counter at 1,
+// which matched the workload's existing "v1" marker and skipped the rollout
+// even though the credentials had changed.
+func TestRecreatedSecretKeepsVersionMonotonic(t *testing.T) {
+	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: ns}}
+	h := newHarness(t, newSR(func(sr *rotationv1alpha1.SecretRotation) {
+		sr.Spec.RestartTargets = []rotationv1alpha1.WorkloadRef{{Kind: "Deployment", Name: "api"}}
+	}), dep)
+	h.mustReconcile("db")
+	if err := h.c.Delete(context.Background(), h.secret("db-creds")); err != nil {
+		t.Fatal(err)
+	}
+	h.mustReconcile("db")
+
+	if v := readState(h.secret("db-creds")).Version; v != 2 {
+		t.Fatalf("version after recreate = %d, want 2", v)
+	}
+	key, want := restartAnnotation(h.sr("db"), 2)
+	got := &appsv1.Deployment{}
+	_ = h.c.Get(context.Background(), client.ObjectKeyFromObject(dep), got)
+	if got.Spec.Template.Annotations[key] != want {
+		t.Errorf("workload not rolled after recreate: annotation = %q, want %q", got.Spec.Template.Annotations[key], want)
+	}
+}
+
 func TestRestartsWorkloadsIdempotently(t *testing.T) {
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: ns}}
 	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "worker", Namespace: ns}}
