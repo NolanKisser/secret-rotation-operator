@@ -1,0 +1,18 @@
+# Binaries and local tooling
+bin/
+dist/
+*.exe
+
+# Test output
+cover.out
+*.test
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/*.tfstate*
+terraform/**/.terraform.lock.hcl
+
+# Editors
+.idea/
+.vscode/
+*.swp

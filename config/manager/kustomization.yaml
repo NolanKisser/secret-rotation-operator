@@ -1,0 +1,7 @@
+resources:
+- manager.yaml
+- metrics_service.yaml
+images:
+- name: controller
+  newName: ghcr.io/nolankisser/secret-rotation-operator
+  newTag: latest

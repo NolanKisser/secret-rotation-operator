@@ -1,0 +1,28 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  enable:
+  - bodyclose
+  - copyloopvar
+  - errorlint
+  - gocritic
+  - gosec
+  - misspell
+  - nilerr
+  - revive
+  - unconvert
+  - unparam
+  exclusions:
+    generated: lax
+    rules:
+    - path: _test\.go
+      linters: [gosec, unparam]
+formatters:
+  enable:
+  - gofmt
+  - goimports
+  settings:
+    goimports:
+      local-prefixes:
+      - github.com/NolanKisser/secret-rotation-operator

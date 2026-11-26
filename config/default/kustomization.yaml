@@ -1,0 +1,16 @@
+# Entry point: `kubectl apply -k config/default`
+namespace: secret-rotation-system
+namePrefix: secret-rotation-
+
+resources:
+- ../crd
+- ../rbac
+- ../manager
+# Uncomment if the Prometheus Operator is installed.
+# - ../prometheus
+
+labels:
+- includeSelectors: false
+  pairs:
+    app.kubernetes.io/name: secret-rotation-operator
+    app.kubernetes.io/part-of: secret-rotation-operator

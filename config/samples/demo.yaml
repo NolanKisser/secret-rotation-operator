@@ -1,0 +1,42 @@
+# Fast-rotating demo for a local kind cluster: a 2-minute interval and a
+# Deployment that prints the mounted password, so you can watch rollouts.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: demo-app}
+  template:
+    metadata:
+      labels: {app: demo-app}
+    spec:
+      containers:
+      - name: app
+        image: busybox:1.37
+        command: ["sh", "-c", "echo started with password $(cat /creds/password | head -c 6)...; sleep 3600"]
+        volumeMounts:
+        - {name: creds, mountPath: /creds, readOnly: true}
+      volumes:
+      - name: creds
+        secret:
+          secretName: demo-credentials
+---
+apiVersion: rotation.nolankisser.github.io/v1alpha1
+kind: SecretRotation
+metadata:
+  name: demo
+spec:
+  secretName: demo-credentials
+  rotationInterval: 2m
+  keepPrevious: true
+  keys:
+  - name: password
+    generator:
+      type: Password
+      length: 24
+      symbols: true
+  restartTargets:
+  - kind: Deployment
+    name: demo-app

@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alerts
+  namespace: system
+spec:
+  groups:
+  - name: secret-rotation
+    rules:
+    - alert: SecretRotationOverdue
+      # The next rotation was due more than 15 minutes ago: the operator is
+      # down, the resource is suspended, or writes are failing.
+      expr: time() - secret_rotation_next_rotation_timestamp_seconds > 900
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Secret rotation {{ $labels.namespace }}/{{ $labels.name }} is overdue"
+        runbook: "kubectl describe secretrotation -n {{ $labels.namespace }} {{ $labels.name }}"
+    - alert: SecretRotationErrors
+      expr: sum by (namespace, name, stage) (increase(secret_rotation_errors_total[30m])) > 5
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $labels.namespace }}/{{ $labels.name }} is failing at stage {{ $labels.stage }}"
+    - alert: SecretRotationReconcileErrorsHigh
+      expr: sum(rate(controller_runtime_reconcile_errors_total{controller="secretrotation"}[10m])) > 0.1
+      for: 15m
+      labels:
+        severity: critical
+      annotations:
+        summary: "secret-rotation-operator reconcile error rate is elevated"
