@@ -1,5 +1,7 @@
 # secret-rotation-operator
 
+[![CI](https://github.com/NolanKisser/secret-rotation-operator/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/NolanKisser/secret-rotation-operator/actions/workflows/ci.yaml)
+
 A Kubernetes operator that generates and rotates Secrets on a schedule, rolls the
 workloads that consume them, and mirrors each new version into AWS Secrets Manager.
 

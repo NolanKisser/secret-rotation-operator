@@ -40,7 +40,7 @@ jobs:
     - uses: sigstore/cosign-installer@v3
     - name: Sign image
       run: cosign sign --yes "${IMG%:*}@${{ steps.build.outputs.digest }}"
-    - uses: imranismail/setup-kustomize@v2
+    - uses: imranismail/setup-kustomize@v3
     - name: Render install manifest
       run: make build-installer IMG=${IMG}
     - name: Publish GitHub release
